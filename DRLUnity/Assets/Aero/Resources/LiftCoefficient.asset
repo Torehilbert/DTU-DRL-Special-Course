@@ -1,0 +1,74 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 7913327518cfe5f4a8a9fc7117fde579, type: 3}
+  m_Name: LiftCoefficient
+  m_EditorClassIdentifier: 
+  profile:
+    serializedVersion: 2
+    m_Curve:
+    - serializedVersion: 3
+      time: 0
+      value: 0
+      inSlope: 0
+      outSlope: 0.0625
+      tangentMode: 69
+      weightedMode: 0
+      inWeight: 0.33333334
+      outWeight: 0.33333334
+    - serializedVersion: 3
+      time: 16
+      value: 1
+      inSlope: 0.024902483
+      outSlope: 0.024902483
+      tangentMode: 0
+      weightedMode: 0
+      inWeight: 0.22609061
+      outWeight: 0.8590603
+    - serializedVersion: 3
+      time: 18
+      value: 1
+      inSlope: -0.053410377
+      outSlope: -0.053410377
+      tangentMode: 0
+      weightedMode: 0
+      inWeight: 0.5939598
+      outWeight: 0.25055885
+    - serializedVersion: 3
+      time: 21.912746
+      value: 0.4500075
+      inSlope: 0
+      outSlope: 0
+      tangentMode: 0
+      weightedMode: 0
+      inWeight: 0
+      outWeight: 0
+    - serializedVersion: 3
+      time: 45
+      value: 1
+      inSlope: 0
+      outSlope: 0
+      tangentMode: 0
+      weightedMode: 0
+      inWeight: 0
+      outWeight: 0
+    - serializedVersion: 3
+      time: 90
+      value: 0
+      inSlope: -0.022222223
+      outSlope: 0
+      tangentMode: 69
+      weightedMode: 0
+      inWeight: 0
+      outWeight: 0
+    m_PreInfinity: 2
+    m_PostInfinity: 2
+    m_RotationOrder: 4

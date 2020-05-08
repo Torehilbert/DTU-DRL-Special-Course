@@ -1,0 +1,28 @@
+{
+    "input_size":1,
+    "num_temp_results":3,
+    "num_outputs":2,
+
+    "module_first":{
+        "input":0,
+        "units":[3,1],
+        "acts":["ReLU", "Tanh"],
+
+        "internal_id": 1,
+        "return_id": 0
+    },
+
+    "input_for_second":{
+        "merge_ids": [0, 1],
+        "internal_id": 2
+    },
+
+    "module_second":{
+        "input":2,
+        "units":[3,1],
+        "acts":["ReLU", "Tanh"],
+
+        "internal_id": 3,
+        "return_id": 1
+    }
+}
