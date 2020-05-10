@@ -13,6 +13,8 @@ import Rollout
 import Logger
 import Baseline
 import Validate
+import ParameterScheme as scheme
+
 
 # arguments
 parser = argparse.ArgumentParser()
@@ -21,18 +23,23 @@ parser.add_argument("-episodes", type=int, required=False, default=25)
 parser.add_argument("-iterations", type=int, required=False, default=None)
 parser.add_argument("-steps", type=int, required=False, default=None)
 
+parser.add_argument("-nstep", type=int, required=False, default=500)
 parser.add_argument("-rolloutlimit", type=int, required=False, default=500)
 parser.add_argument("-discount", type=float, required=False, default=0.95)
 
 parser.add_argument("-lr_policy", type=float, required=False, default=1e-4)
+parser.add_argument("-lr_policy_gamma", type=float, required=False, default=None)
+parser.add_argument("-lr_policy_stepsize", type=float, required=False, default=None)
 parser.add_argument("-policy_weight_decay", type=float, required=False, default=1e-7)
 
 parser.add_argument("-continuous", type=int, required=False, default=1)
 parser.add_argument("-continuous_sigma", type=float, required=False, default=0.5)
-parser.add_argument("-continuous_sigma_end", type=float, required=False, default=None)
+parser.add_argument("-continuous_sigma_end", type=float, required=False, default=0.1)
 parser.add_argument("-continuous_sigma_steps", type=int, required=False, default=None)
 
 parser.add_argument("-lr_critic", type=float, required=False, default=1e-3)
+parser.add_argument("-lr_critic_gamma", type=float, required=False, default=None)
+parser.add_argument("-lr_critic_stepsize", type=float, required=False, default=None)
 parser.add_argument("-critic_weight_decay", type=float, required=False, default=1e-7)
 parser.add_argument("-critic_lag", type=int, required=False, default=10)
 
@@ -45,8 +52,16 @@ parser.add_argument("-portSend", type=int, required=False, default=24000)
 parser.add_argument("-portReceive", type=int, required=False, default=24001)
 args = parser.parse_args()
 
-# variables calculated from arguments
-STEPS_MAX = args.episodes * args.rolloutlimit
+### additional logic on arguments
+# Training duration
+if args.steps is not None:
+    pass
+elif args.iterations is not None:
+    raise NotImplementedError()
+elif args.episodes is not None:
+    args.steps = args.episodes * args.rolloutlimit
+else:
+    raise Exception("No training duration/length was provided (use -steps=? or -episodes=?)")
 
 
 def reward_to_string(reward, minVal=-100, maxVal=500, divisions=12):
@@ -65,9 +80,10 @@ if __name__ == "__main__":
     # instantiate classes
     if args.continuous == 1:
         net = BoxNetworkForceContinuous(sigma=args.continuous_sigma,
-                                            sigma_end=args.continuous_sigma_end,
-                                            sigma_end_step=args.continuous_sigma_steps,
-                                            pretrained_path=path_network)
+                                        sigma_scheme=scheme.CosineParameterScheme(param_start=args.continuous_sigma,
+                                                                                  param_end=args.continuous_sigma_end,
+                                                                                  time_span=args.continuous_sigma_steps if args.continuous_sigma_steps is not None else args.steps),
+                                        pretrained_path=path_network)
     else:
         net = BoxNetworkForce(pretrained_path=path_network)
 
@@ -79,6 +95,8 @@ if __name__ == "__main__":
     optimizer = optim.Adam(net.parameters(),
                             lr=args.lr_policy,
                             weight_decay=args.policy_weight_decay)
+
+    scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=50000, gamma=0.5)
 
     baseline = Baseline.Critic(input_size=2,
                                 lr=args.lr_critic,
@@ -92,7 +110,8 @@ if __name__ == "__main__":
                                     auto_reset=True,
                                     action_mode=net.ActionMode_Greedy)
 
-    logger = Logger.Logger(path=os.path.join(path_results_folder, "stats.csv"), column_names=["step", "training reward", "validation reward", "loss policy", "loss critic", "epsisode length"])
+    logger = Logger.Logger(path=os.path.join(path_results_folder, "stats.csv"),
+                           column_names=["step", "training reward", "validation reward", "loss policy", "loss critic", "epsisode length", "sigma", "lr_policy"])
 
     # initialize variables
     rollout_generator.initialize()
@@ -100,9 +119,9 @@ if __name__ == "__main__":
     status = 0
 
     # train loop
-    while steps < STEPS_MAX and status != 2:
+    while steps < args.steps and status != 2:
         # generate rollout
-        states, rewards, logprobs, status, done = rollout_generator.generate_rollout(args.rolloutlimit, action_mode=net.ActionMode_Exploration, auto_reset=True)
+        states, rewards, logprobs, status, done = rollout_generator.generate_rollout(args.nstep, action_mode=net.ActionMode_Exploration, auto_reset=True)
         number_of_steps = len(rewards)
         steps += number_of_steps
 
@@ -127,13 +146,16 @@ if __name__ == "__main__":
         if(validator.time_for_validation(steps)):
             validation_reward = validator.validate()
 
-            s_prog = "%.1f" % (100 * steps / STEPS_MAX)
+            s_prog = "%.1f" % (100 * steps / args.steps)
             s_rew = "%.0f" % validation_reward
             s_rew_vis = reward_to_string(validation_reward, minVal=-100, maxVal=500, divisions=12)
             print("progress %5s%%, reward %4s %s" % (s_prog, s_rew, s_rew_vis))
 
         net.run_parameter_change_scheme(steps)
-        logger.add(steps, np.sum(rewards), validation_reward, loss.item(), loss_critic, number_of_steps)
+        logger.add(steps, np.sum(rewards), validation_reward, loss.item(), loss_critic, number_of_steps, net.sigma.item(), optimizer.param_groups[0]["lr"])
+
+        # adjust parameters
+        scheduler.step()
 
     # terminate environment
     rollout_generator.close()

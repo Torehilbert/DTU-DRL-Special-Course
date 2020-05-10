@@ -6,6 +6,7 @@ import numpy as np
 import os
 import math
 
+
 class BoxNetworkForce(nn.Module):
     def __init__(self, pretrained_path=None):
         super(BoxNetworkForce, self).__init__()
@@ -56,7 +57,7 @@ class BoxNetworkForceContinuous(nn.Module):
     ActionMode_Greedy = 0
     ActionMode_Exploration = 1
 
-    def __init__(self, sigma, sigma_end=None, sigma_end_step=None, pretrained_path=None):
+    def __init__(self, sigma, sigma_scheme=None, pretrained_path=None):
         super(BoxNetworkForceContinuous, self).__init__()
 
         self.sequential = nn.Sequential(
@@ -72,10 +73,7 @@ class BoxNetworkForceContinuous(nn.Module):
         self.sequential[2].bias.data = torch.zeros(32)
         self.sequential[4].bias.data = torch.zeros(1)
         self.sigma = torch.tensor(sigma)
-        self.sigma_start = sigma
-        self.sigma_end = sigma_end
-        self.sigma_end_step = sigma_end_step
-
+        self.sigma_scheme = sigma_scheme
         if pretrained_path is not None:
             self.load_state_dict(torch.load(pretrained_path))
 
@@ -97,15 +95,9 @@ class BoxNetworkForceContinuous(nn.Module):
         pass
 
     def run_parameter_change_scheme(self, step):
-        if self.sigma_end is None or self.sigma_end_step is None:
+        if self.sigma_scheme is None:
             return
-
-        step_normalized = step / (0.5 * self.sigma_end_step)
-        if step_normalized > 2:
-            return
-
-        sigma_span = self.sigma_start - self.sigma_end
-        self.sigma = torch.tensor(sigma_span / math.exp(step_normalized * step_normalized * step_normalized) + self.sigma_end)
+        self.sigma = torch.tensor(self.sigma_scheme(step))
 
 
 if __name__ == "__main__":

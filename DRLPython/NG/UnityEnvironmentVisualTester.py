@@ -10,7 +10,7 @@ import GetPath
 
 
 ENV_NAME = "BoxV2"
-NETWORK_PATH = r"2020-05-08 19-04-56 BoxV2\net_final.pt"
+NETWORK_PATH = r"2020-05-10 12-04-55 BoxV2\net_final.pt"
 
 if __name__ == "__main__":
     path_executable = GetPath.get_environment_executable_path(ENV_NAME)

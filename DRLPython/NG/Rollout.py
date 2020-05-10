@@ -4,11 +4,13 @@ import torch
 #from BoxPreprocessor import preprocess_state, preprocess_action
 import BoxPreprocessor
 
+
 class RolloutGenerator():
-    def __init__(self, net, env, max_episode_steps=500):
+    def __init__(self, net, env, episode_steps_max=500):
         self.net = net
         self.env = env
-        self.max_episode_steps = max_episode_steps
+        self.episode_steps_max = episode_steps_max
+        self.step_current = 0
 
     def initialize(self):
         self.state = self.env.initial_state()

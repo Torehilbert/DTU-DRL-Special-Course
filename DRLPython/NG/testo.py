@@ -6,21 +6,26 @@ import numpy as np
 import math
 
 
-def reward_to_string(reward, minVal=-100, maxVal=500, divisions=12):
-    n = math.ceil(divisions * (reward - minVal) / (maxVal - minVal))
-    string = "".join([">" for i in range(n)])
-    format_string = "|%%-%ds|" % divisions
-    return format_string % string
+def actfunc(step, sigma_start, sigma_end, step_range):
+    x = np.pi * (step / step_range)
+    if x < 0:
+        return sigma_start
+    elif x > np.pi:
+        return sigma_end
+    else:
+        sigma_span = sigma_start - sigma_end
+        cos = sigma_span * (np.cos(x) + 1) / 2 + sigma_end
+        return cos
 
 if __name__ == "__main__":
-    print("Starting:")
-    print(reward_to_string(-100))
-    print(reward_to_string(-90))
-    print(reward_to_string(-49))
-    print(reward_to_string(1))
-    print(reward_to_string(49))
-    print(reward_to_string(51))
-    print(reward_to_string(201, divisions=24))
-    print(reward_to_string(301, divisions=24))
-    print(reward_to_string(401, divisions=24))
-    print(reward_to_string(499, divisions=24))
+    no_steps = 500000
+    steps = np.linspace(0, no_steps)
+    sigmas = actfunc(steps, 0.5, 0.1, no_steps)
+    reciprok = 1/(sigmas * sigmas)
+
+    plt.figure()
+    plt.plot(steps, sigmas)
+
+    plt.figure()
+    plt.plot(steps, reciprok)
+    plt.show()
