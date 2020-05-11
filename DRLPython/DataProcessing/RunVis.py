@@ -4,34 +4,70 @@ import pandas as pd
 import numpy as np
 
 
-FOLDER_PATH = r"D:\Projects\DTU DRL Special Course\Results\LinReg"
-CSV_NAME = "training.csv"
-SMOOTHING_ALPHA = 0.9
+COLORS = ["blue", "red", "green"]
 
-if __name__ == "__main__":
-    contents = os.listdir(FOLDER_PATH)
 
-    # Extract relevant paths
+def extract_series(csv_path, column_name):
+    df = pd.read_csv(csv_path, header='infer')
+    rewards = df[column_name].values
+    return rewards
+
+
+def smooth_series(series, alpha):
+    for i in range(1, len(series)):
+        series[i] = alpha * series[i - 1] + (1 - alpha) * series[i]
+    return series
+
+
+def find_nested_csvs_with_name(path_parent, csv_name):
+    contents = os.listdir(path_parent)
     csv_paths = []
     for i in range(len(contents)):
-        content = contents[i]
-        subfolder_path = os.path.join(FOLDER_PATH, content)
+        subfolder_path = os.path.join(path_parent, contents[i])
         if os.path.isdir(subfolder_path):
-            csv_path = os.path.join(subfolder_path, CSV_NAME)
+            csv_path = os.path.join(subfolder_path, csv_name)
             if os.path.isfile(csv_path):
                 csv_paths.append(csv_path)
+    return csv_paths
 
-    fig = plt.figure()
-    # Extract data from paths
-    n = len(csv_paths)
-    for i in range(n):
+
+def plot_within_group(path_folder, column_name="validation reward", sheet_name="stats.csv", smoothing_alpha=0.9):
+    csv_paths = find_nested_csvs_with_name(path_folder, sheet_name)
+
+    plt.figure()
+    for i in range(len(csv_paths)):
         csv_path = csv_paths[i]
-        df = pd.read_csv(csv_path, header=None)
-        smoothed_rewards = df.values[:, 1]
-        for j in range(1, len(smoothed_rewards)):
-            smoothed_rewards[j] = SMOOTHING_ALPHA * smoothed_rewards[j - 1] + (1 - SMOOTHING_ALPHA) * smoothed_rewards[j]
-            pass
-        plt.plot(df.values[:, 0], smoothed_rewards)
+        smoothed_rewards = smooth_series(extract_series(csv_path, column_name), smoothing_alpha)
+        steps = extract_series(csv_path, "step")
+        plt.plot(steps, smoothed_rewards)
         print("%d: Max=%f   (%s)" % (i, np.max(smoothed_rewards), csv_path))
     plt.show()
-            
+
+
+def plot_groups(path_folder, column_name="validation reward", sheet_name="stats.csv", smoothing_alpha=0.9):
+    contents = os.listdir(path_folder)
+
+    # find groups
+    groups = []
+    for i in range(len(contents)):
+        path_group = os.path.join(path_folder, contents[i])
+        if os.path.isdir(path_group):
+            groups.append(path_group)
+    
+    plt.figure()
+    for i in range(len(groups)):
+        csv_paths = find_nested_csvs_with_name(groups[i], sheet_name)
+        for j in range(len(csv_paths)):
+            smoothed_rewards = smooth_series(extract_series(csv_paths[j], column_name), smoothing_alpha)
+            steps = extract_series(csv_paths[j], "step")
+            plt.plot(steps, smoothed_rewards, color=COLORS[i])
+    plt.show()
+
+
+if __name__ == "__main__":
+    path_folder = r"D:\Projects\DTU DRL Special Course\Results\exp_steplength"
+    #column_name = "validation reward"
+    #smoothing_alpha = 0.95
+
+    #plot_within_group(path_folder=path_folder, column_name=column_name, smoothing_alpha=smoothing_alpha)
+    plot_groups(path_folder, column_name="validation reward", sheet_name="stats.csv", smoothing_alpha=0.95)

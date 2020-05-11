@@ -4,6 +4,7 @@ import numpy as np
 import os
 import argparse
 import math
+import time
 
 # custom libs
 from BaseNetwork import BoxNetworkForce, BoxNetworkForceContinuous
@@ -72,6 +73,8 @@ def reward_to_string(reward, minVal=-100, maxVal=500, divisions=12):
 
 
 if __name__ == "__main__":
+    t0 = time.time()
+
     # paths
     path_executable = GetPath.get_environment_executable_path(args.env)
     path_results_folder = GetPath.create_result_folder(args.env)
@@ -111,7 +114,7 @@ if __name__ == "__main__":
                                     action_mode=net.ActionMode_Greedy)
 
     logger = Logger.Logger(path=os.path.join(path_results_folder, "stats.csv"),
-                           column_names=["step", "training reward", "validation reward", "loss policy", "loss critic", "epsisode length", "sigma", "lr_policy"])
+                           column_names=["time", "step", "training reward", "validation reward", "loss policy", "loss critic", "epsisode length", "sigma", "lr_policy"])
 
     # initialize variables
     rollout_generator.initialize()
@@ -121,7 +124,7 @@ if __name__ == "__main__":
     # train loop
     while steps < args.steps and status != 2:
         # generate rollout
-        states, rewards, logprobs, status, done = rollout_generator.generate_rollout(args.nstep, action_mode=net.ActionMode_Exploration, auto_reset=True)
+        states, rewards, logprobs, status, done = rollout_generator.generate_rollout(args.nstep, action_mode=net.ActionMode_Exploration)
         number_of_steps = len(rewards)
         steps += number_of_steps
 
@@ -152,7 +155,7 @@ if __name__ == "__main__":
             print("progress %5s%%, reward %4s %s" % (s_prog, s_rew, s_rew_vis))
 
         net.run_parameter_change_scheme(steps)
-        logger.add(steps, np.sum(rewards), validation_reward, loss.item(), loss_critic, number_of_steps, net.sigma.item(), optimizer.param_groups[0]["lr"])
+        logger.add(time.time() - t0, steps, np.sum(rewards), validation_reward, loss.item(), loss_critic, number_of_steps, net.sigma.item(), optimizer.param_groups[0]["lr"])
 
         # adjust parameters
         scheduler.step()

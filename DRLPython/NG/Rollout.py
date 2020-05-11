@@ -6,10 +6,10 @@ import BoxPreprocessor
 
 
 class RolloutGenerator():
-    def __init__(self, net, env, episode_steps_max=500):
+    def __init__(self, net, env, rollout_limit=500):
         self.net = net
         self.env = env
-        self.episode_steps_max = episode_steps_max
+        self.rollout_limit = rollout_limit
         self.step_current = 0
 
     def initialize(self):
@@ -36,6 +36,10 @@ class RolloutGenerator():
         rewards = []
 
         for i in range(n_steps):
+            self.step_current += 1
+            if self.step_current >= self.rollout_limit:
+                break
+
             self.state = BoxPreprocessor.preprocess_state(self.state)
             states.append(self.state)
 
@@ -56,8 +60,9 @@ class RolloutGenerator():
 
         states.append(BoxPreprocessor.preprocess_state(self.state))
 
-        if done or auto_reset:
+        if done or auto_reset or (self.step_current >= self.rollout_limit):
             self.state = self.env.reset()
+            self.step_current = 0
 
         states = torch.stack((states))
         logprobs = torch.stack((logprobs))
