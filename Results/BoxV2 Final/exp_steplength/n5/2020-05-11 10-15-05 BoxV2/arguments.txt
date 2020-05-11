@@ -1,0 +1,27 @@
+Training parameters:
+env=BoxV2
+episodes=1000
+iterations=None
+steps=500000
+nstep=5
+rolloutlimit=500
+discount=0.995
+lr_policy=0.0001
+lr_policy_gamma=None
+lr_policy_stepsize=None
+policy_weight_decay=1e-07
+continuous=1
+continuous_sigma=0.5
+continuous_sigma_end=0.1
+continuous_sigma_steps=None
+lr_critic=0.001
+lr_critic_gamma=None
+lr_critic_stepsize=None
+critic_weight_decay=1e-07
+critic_lag=5
+valfreq=10
+valcount=2
+path_network=None
+reward_normalization=0
+portSend=26006
+portReceive=26007

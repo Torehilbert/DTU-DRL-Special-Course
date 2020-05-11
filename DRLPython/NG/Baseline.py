@@ -1,5 +1,7 @@
 import torch
 
+import Logger
+
 
 class Baseline(torch.nn.Module):
     def __init__(self, input_size):
@@ -40,7 +42,7 @@ class BaseCriticNetwork(torch.nn.Module):
 
 
 class Critic(torch.nn.Module):
-    def __init__(self, input_size, lr, weight_decay, lag):
+    def __init__(self, input_size, lr, lr_step_size, lr_gamma, weight_decay, lag, log=None):
         super(Critic, self).__init__()
 
         self.network_training = BaseCriticNetwork(input_size)
@@ -49,9 +51,10 @@ class Critic(torch.nn.Module):
 
         self.fit_criterion = torch.nn.MSELoss()
         self.fit_optimizer = torch.optim.Adam(self.network_training.parameters(), lr=lr, weight_decay=weight_decay)
-        
+        self.fit_scheduler_lr = torch.optim.lr_scheduler.StepLR(self.fit_optimizer, step_size=lr_step_size, gamma=lr_gamma)
         self.lag = lag
         self.count_step = 0
+        self.log = Logger.Logger(path=log, column_names=["learning rate"]) if log is not None else None
 
     def forward(self, x):
         return self.network_release(x)
@@ -68,7 +71,22 @@ class Critic(torch.nn.Module):
             self.count_step = 0
             self.network_release.load_state_dict(self.network_training.state_dict())
 
+        self.fit_scheduler_lr.step()
+        if self.log is not None:
+            self.log.add(self.fit_optimizer.param_groups[0]["lr"])
+
         return loss.item()
+
+    def close(self):
+        if self.log is not None:
+            self.log.close()
+
+    def save(self, file_path):
+        torch.save(self.network_training.state_dict(), file_path)
+
+    def load(self, file_path):
+        self.network_training.load_state_dict(torch.load(file_path))
+        self.network_release.load_state_dict(self.network_training.state_dict())
 
 
 if __name__ == "__main__":

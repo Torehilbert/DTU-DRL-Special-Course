@@ -34,10 +34,12 @@ class RolloutGenerator():
         actions = []
         logprobs = []
         rewards = []
+        episode_ended = False
 
         for i in range(n_steps):
             self.step_current += 1
             if self.step_current >= self.rollout_limit:
+                episode_ended = True
                 break
 
             self.state = BoxPreprocessor.preprocess_state(self.state)
@@ -60,13 +62,14 @@ class RolloutGenerator():
 
         states.append(BoxPreprocessor.preprocess_state(self.state))
 
-        if done or auto_reset or (self.step_current >= self.rollout_limit):
+        if done or auto_reset or episode_ended:
             self.state = self.env.reset()
             self.step_current = 0
+            episode_ended = True
 
         states = torch.stack((states))
         logprobs = torch.stack((logprobs))
-        return states, rewards, logprobs, status, done
+        return states, rewards, logprobs, status, done, episode_ended
 
 
 def calculate_returns(rewards, discount, normalize=False, terminal_value=0):

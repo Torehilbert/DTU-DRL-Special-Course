@@ -20,17 +20,16 @@ import ParameterScheme as scheme
 # arguments
 parser = argparse.ArgumentParser()
 parser.add_argument("-env", type=str, required=False, default="BoxV2")
-parser.add_argument("-episodes", type=int, required=False, default=25)
-parser.add_argument("-iterations", type=int, required=False, default=None)
-parser.add_argument("-steps", type=int, required=False, default=None)
 
-parser.add_argument("-nstep", type=int, required=False, default=500)
+parser.add_argument("-iterations", type=int, required=False, default=500)
+parser.add_argument("-nstep", type=int, required=False, default=10)
+
 parser.add_argument("-rolloutlimit", type=int, required=False, default=500)
-parser.add_argument("-discount", type=float, required=False, default=0.95)
+parser.add_argument("-discount", type=float, required=False, default=0.995)
 
 parser.add_argument("-lr_policy", type=float, required=False, default=1e-4)
-parser.add_argument("-lr_policy_gamma", type=float, required=False, default=None)
-parser.add_argument("-lr_policy_stepsize", type=float, required=False, default=None)
+parser.add_argument("-lr_policy_gamma", type=float, required=False, default=1.0)
+parser.add_argument("-lr_policy_stepsize", type=float, required=False, default=1000000)
 parser.add_argument("-policy_weight_decay", type=float, required=False, default=1e-7)
 
 parser.add_argument("-continuous", type=int, required=False, default=1)
@@ -39,30 +38,21 @@ parser.add_argument("-continuous_sigma_end", type=float, required=False, default
 parser.add_argument("-continuous_sigma_steps", type=int, required=False, default=None)
 
 parser.add_argument("-lr_critic", type=float, required=False, default=1e-3)
-parser.add_argument("-lr_critic_gamma", type=float, required=False, default=None)
-parser.add_argument("-lr_critic_stepsize", type=float, required=False, default=None)
+parser.add_argument("-lr_critic_gamma", type=float, required=False, default=1.0)
+parser.add_argument("-lr_critic_stepsize", type=float, required=False, default=1000000)
 parser.add_argument("-critic_weight_decay", type=float, required=False, default=1e-7)
 parser.add_argument("-critic_lag", type=int, required=False, default=10)
 
-parser.add_argument("-valfreq", type=int, required=False, default=5)
-parser.add_argument("-valcount", type=int, required=False, default=1)
-parser.add_argument("-path_network", type=str, required=False, default=None)
+parser.add_argument("-valfreq", type=int, required=False, default=100)
+parser.add_argument("-valcount", type=int, required=False, default=3)
+parser.add_argument("-path_policy", type=str, required=False, default=None)
+parser.add_argument("-path_critic", type=str, required=False, default=None)
 parser.add_argument("-reward_normalization", type=int, required=False, default=0)
+parser.add_argument("-network_save_interval", type=int, required=False, default=None)
 
 parser.add_argument("-portSend", type=int, required=False, default=24000)
 parser.add_argument("-portReceive", type=int, required=False, default=24001)
 args = parser.parse_args()
-
-### additional logic on arguments
-# Training duration
-if args.steps is not None:
-    pass
-elif args.iterations is not None:
-    raise NotImplementedError()
-elif args.episodes is not None:
-    args.steps = args.episodes * args.rolloutlimit
-else:
-    raise Exception("No training duration/length was provided (use -steps=? or -episodes=?)")
 
 
 def reward_to_string(reward, minVal=-100, maxVal=500, divisions=12):
@@ -78,17 +68,17 @@ if __name__ == "__main__":
     # paths
     path_executable = GetPath.get_environment_executable_path(args.env)
     path_results_folder = GetPath.create_result_folder(args.env)
-    path_network = None if args.path_network is None else os.path.join(GetPath._get_results_folder(), args.path_network)
+    path_policy = None if args.path_policy is None else os.path.join(GetPath._get_results_folder(), args.path_policy)
 
     # instantiate classes
     if args.continuous == 1:
         net = BoxNetworkForceContinuous(sigma=args.continuous_sigma,
                                         sigma_scheme=scheme.CosineParameterScheme(param_start=args.continuous_sigma,
                                                                                   param_end=args.continuous_sigma_end,
-                                                                                  time_span=args.continuous_sigma_steps if args.continuous_sigma_steps is not None else args.steps),
-                                        pretrained_path=path_network)
+                                                                                  time_span=args.continuous_sigma_steps if args.continuous_sigma_steps is not None else args.iterations),
+                                        pretrained_path=path_policy)
     else:
-        net = BoxNetworkForce(pretrained_path=path_network)
+        net = BoxNetworkForce(pretrained_path=path_policy)
 
     torch.save(net.state_dict(), os.path.join(path_results_folder, "net_initial.pt"))
 
@@ -99,34 +89,51 @@ if __name__ == "__main__":
                             lr=args.lr_policy,
                             weight_decay=args.policy_weight_decay)
 
-    scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=50000, gamma=0.5)
+    scheduler_policy = torch.optim.lr_scheduler.StepLR(optimizer, step_size=args.lr_policy_stepsize, gamma=args.lr_policy_gamma)
 
     baseline = Baseline.Critic(input_size=2,
                                 lr=args.lr_critic,
+                                lr_step_size=args.lr_critic_stepsize,
+                                lr_gamma=args.lr_critic_gamma,
                                 weight_decay=args.critic_weight_decay,
-                                lag=args.critic_lag)
+                                lag=args.critic_lag,
+                                log=os.path.join(path_results_folder, "log_critic.csv"))
+    if args.path_critic is not None:
+        baseline.load(args.path_critic)
 
-    validator = Validate.Validator(rollout_generator=rollout_generator,
+    env_validation = UnityEnvironment(0, args.portSend + 50, args.portReceive + 50, path_executable, 7, 1, False)
+    rollout_generator_validation = Rollout.RolloutGenerator(net, env_validation, args.rolloutlimit)
+    validator = Validate.Validator(rollout_generator=rollout_generator_validation,
                                     validation_count=args.valcount,
                                     validation_frequency=args.valfreq,
                                     rollout_limit=args.rolloutlimit,
                                     auto_reset=True,
                                     action_mode=net.ActionMode_Greedy)
 
-    logger = Logger.Logger(path=os.path.join(path_results_folder, "stats.csv"),
-                           column_names=["time", "step", "training reward", "validation reward", "loss policy", "loss critic", "epsisode length", "sigma", "lr_policy"])
+    logger = Logger.Logger(path=os.path.join(path_results_folder, "training.csv"),
+                           column_names=["time", "step", "iterations", "episodes", "training reward", "episode steps", "loss policy", "loss critic", "sigma", "lr_policy"])
+
+    logger_validation = Logger.Logger(path=os.path.join(path_results_folder, "validation.csv"),
+                                      column_names=["time", "steps", "iterations", "episodes", "validation reward", "episode length"])
 
     # initialize variables
     rollout_generator.initialize()
-    steps = 0
+    rollout_generator_validation.initialize()
     status = 0
 
+    steps = 0
+    iterations = 0
+
+    episodes = 0
+    episode_reward_sum = 0
+    episode_step_length = 0
+
     # train loop
-    while steps < args.steps and status != 2:
+    while iterations < args.iterations and status != 2:
         # generate rollout
-        states, rewards, logprobs, status, done = rollout_generator.generate_rollout(args.nstep, action_mode=net.ActionMode_Exploration)
+        states, rewards, logprobs, status, done, episode_ended = rollout_generator.generate_rollout(args.nstep, action_mode=net.ActionMode_Exploration)
         number_of_steps = len(rewards)
-        steps += number_of_steps
+
 
         # returns (R) and values (V)
         V = baseline(states[:-1, :])
@@ -145,28 +152,51 @@ if __name__ == "__main__":
         # optimization critic
         loss_critic = baseline.fit(states[:-1, :], R.view(-1, 1))
 
-        # validate
-        if(validator.time_for_validation(steps)):
-            validation_reward = validator.validate()
+        # stats
+        t = time.time() - t0
+        steps += number_of_steps
+        iterations += 1
+        episode_reward_sum += np.sum(rewards)
+        episode_step_length += number_of_steps
+        if episode_ended:
+            episodes += 1
+            logger.add(t, steps, iterations, episodes, episode_reward_sum, episode_step_length, loss.item(), loss_critic, net.sigma.item(), optimizer.param_groups[0]["lr"])
+            episode_reward_sum = 0
+            episode_step_length = 0
+        else:
+            logger.add(t, steps, iterations, episodes, "", "", loss.item(), loss_critic, net.sigma.item(), optimizer.param_groups[0]["lr"])
 
-            s_prog = "%.1f" % (100 * steps / args.steps)
+        # validate
+        if(validator.time_for_validation(iterations)):
+            validation_reward, validation_episode_length = validator.validate()
+
+            s_prog = "%.1f" % (100 * iterations / args.iterations)
             s_rew = "%.0f" % validation_reward
             s_rew_vis = reward_to_string(validation_reward, minVal=-100, maxVal=500, divisions=12)
+            logger_validation.add(t, steps, iterations, episodes, validation_reward, validation_episode_length)
             print("progress %5s%%, reward %4s %s" % (s_prog, s_rew, s_rew_vis))
 
-        net.run_parameter_change_scheme(steps)
-        logger.add(time.time() - t0, steps, np.sum(rewards), validation_reward, loss.item(), loss_critic, number_of_steps, net.sigma.item(), optimizer.param_groups[0]["lr"])
-
         # adjust parameters
-        scheduler.step()
+        net.run_parameter_change_scheme(iterations)
+        scheduler_policy.step()
+
+        # save networks
+        if args.network_save_interval is not None and iterations % args.network_save_interval == 0:
+            torch.save(net.state_dict(), os.path.join(path_results_folder, "policy_it_%0.10d.pt" % iterations))
+            baseline.save(os.path.join(path_results_folder, "critic_it_%0.10d.pt" % iterations))
 
     # terminate environment
     rollout_generator.close()
+    rollout_generator_validation.close()
 
     # close
     logger.close()
+    logger_validation.close()
     torch.save(net.state_dict(), os.path.join(path_results_folder, "net_final.pt"))
+    baseline.save(os.path.join(path_results_folder, "critic_final.pt"))
+
     net.close()
+    baseline.close()
     validator.close()
 
     # save training parameters

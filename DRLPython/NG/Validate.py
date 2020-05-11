@@ -14,8 +14,8 @@ class Validator:
 
         self.counter = 0
 
-    def time_for_validation(self, step_counter):
-        if (step_counter // (self.frequency * self.rollout_limit)) >= self.counter:
+    def time_for_validation(self, iteration_number):
+        if (iteration_number // (self.frequency)) >= self.counter:
             return True
         else:
             return False
@@ -24,11 +24,14 @@ class Validator:
         self.counter += 1
 
         average_reward = 0
+        average_length = 0
         for i in range(self.validation_count):
-            _, rewards, _, _, _ = self.rollout_generator.generate_rollout(self.rollout_limit, action_mode=self.action_mode, auto_reset=self.auto_reset)
+            _, rewards, _, _, _, _ = self.rollout_generator.generate_rollout(self.rollout_limit, action_mode=self.action_mode, auto_reset=self.auto_reset)
             average_reward += np.sum(rewards)
+            average_length += len(rewards)
         average_reward = average_reward / self.validation_count
-        return average_reward
+        average_length = average_length / self.validation_count
+        return average_reward, average_length
 
     def close(self):
         pass
