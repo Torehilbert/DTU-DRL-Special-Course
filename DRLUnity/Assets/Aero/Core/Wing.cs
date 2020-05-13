@@ -77,23 +77,3 @@ public class Wing
         return ld;
     }
 }
-
-/*
- * 			Vector3 norm = W.up;
-			Vector3 forw = W.forward;
-			Vector3 cop = T.TransformPoint(W.localPosition);
-			Vector3 vel = R.GetPointVelocity (cop);
-			float aoa = Vector3.Angle (norm, vel) - 90;
-			float cl = FC.interp1 ("CL", aoa);
-			float cd = FC.interp1 ("CD", aoa);
-			Vector3 liftDir = Vector3.Cross(vel, Vector3.Cross(norm, vel)).normalized;
-			Vector3 lift = 0.5f*1.225f*vel.sqrMagnitude*FC.wingArea*cl*liftDir;
-			Vector3 drag = -0.5f*1.225f*vel.sqrMagnitude*FC.wingArea*cd*vel.normalized;
-			if (aoa > 19) {
-				Debug.DrawLine (cop, cop + lift / 750, Color.yellow);
-			} else {
-				Debug.DrawLine (cop, cop + lift / 750, Color.green);
-			}
-			Debug.DrawLine (cop, cop + drag/750,Color.red);
-			R.AddForceAtPosition(lift+drag, cop);
-            */

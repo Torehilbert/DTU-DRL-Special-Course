@@ -6,10 +6,12 @@ public class BoxHumanAgentController : AgentController
     BoxInputReader boxInputReader;
     float[] action = new float[1];
 
+
     public BoxHumanAgentController(BoxInputReader boxInputReader)
     {
         this.boxInputReader = boxInputReader;
     }
+
 
     public override ActionResponse GetActionResponse(int environmentSymbol, float[] state, float reward, bool done)
     {
@@ -21,6 +23,7 @@ public class BoxHumanAgentController : AgentController
         response.msg = "";
         return response;
     }
+
 
     public override void CloseAgent()
     {

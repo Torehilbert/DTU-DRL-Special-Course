@@ -8,7 +8,7 @@ public class RotationMechanism
     public Vector3 rotationAxis;
     public float magnitude;
     public float maxChange = 1;
-    float smoothAngle;
+    public float smoothAngle;
 
     public RotationMechanism(Transform transform, Vector3 localEulerAngles, Vector3 localRotationAxis, float magnitude)
     {
