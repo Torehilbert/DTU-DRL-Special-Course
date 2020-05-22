@@ -6,6 +6,6 @@ public class FlightResetButtonUI : MonoBehaviour
 {
     public void CallbackResetButtonPressed()
     {
-        FlightGameManager.instance.resetButtonPressed = true;
+        FlightGameManager.instance.resetOrdered = true;
     }
 }

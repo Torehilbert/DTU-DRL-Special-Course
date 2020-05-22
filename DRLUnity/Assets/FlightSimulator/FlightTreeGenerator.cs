@@ -14,7 +14,7 @@ public class FlightTreeGenerator : MonoBehaviour
 
     float worldRadius = 600;
 
-    int treeCount = 5000;
+    int treeCount = 2500;
 
     void Start()
     {

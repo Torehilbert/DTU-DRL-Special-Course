@@ -50,6 +50,7 @@ public class RunwayTouchDownDetector : MonoBehaviour
         if (acceptableCollision)
         {
             Debug.Log("Acceptable collider touch: " + collision.collider.name);
+            Rigidbody R = collision.collider.attachedRigidbody;
             report = new TouchDownReport();
             report.wheelPosRight = wheelColliderRight.transform.position;
             report.wheelPosLeft = wheelColliderLeft.transform.position;

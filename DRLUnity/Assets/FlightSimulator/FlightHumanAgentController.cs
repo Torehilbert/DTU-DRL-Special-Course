@@ -21,7 +21,7 @@ public class FlightHumanAgentController : AgentController
         action[2] = flightInputReader.inputBrakes;
 
         ActionResponse response = new ActionResponse();
-        response.symbol = AgentActionSymbol.Continue;
+        response.symbol = flightInputReader.inputReset ? AgentActionSymbol.Reset : AgentActionSymbol.Continue;
         response.actions = action;
         response.msg = "";
         return response;

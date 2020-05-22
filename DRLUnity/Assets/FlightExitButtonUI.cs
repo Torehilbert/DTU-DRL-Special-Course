@@ -6,6 +6,6 @@ public class FlightExitButtonUI : MonoBehaviour
 {
     public void CallbackExitButtonPressed()
     {
-        FlightGameManager.instance.exitButtonPressed = true;
+        FlightGameManager.instance.exitOrdered = true;
     }
 }

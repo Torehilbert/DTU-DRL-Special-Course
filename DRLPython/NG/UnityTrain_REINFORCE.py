@@ -8,7 +8,10 @@ import time
 
 # custom libs
 from BaseNetwork import BoxNetworkForce, BoxNetworkForceContinuous
+from FlightNetwork import FlightNetworkForceContinuous
 from UnityEnvironment import UnityEnvironment
+from BoxPreprocessor import BoxPreprocessor
+from FlightPreprocessor import FlightPreprocessor
 import GetPath
 import Rollout
 import Logger
@@ -19,7 +22,7 @@ import ParameterScheme as scheme
 
 # arguments
 parser = argparse.ArgumentParser()
-parser.add_argument("-env", type=str, required=False, default="BoxV2")
+parser.add_argument("-env", type=str, required=False, default="Flight")
 
 parser.add_argument("-iterations", type=int, required=False, default=500)
 parser.add_argument("-nstep", type=int, required=False, default=10)
@@ -52,6 +55,12 @@ parser.add_argument("-network_save_interval", type=int, required=False, default=
 
 parser.add_argument("-portSend", type=int, required=False, default=24000)
 parser.add_argument("-portReceive", type=int, required=False, default=24001)
+
+parser.add_argument("-actionFrequency", type=int, required=False, default=5)
+parser.add_argument("-difficulty", type=float, required=False, default=0.1)
+parser.add_argument("-windPower", type=float, required=False, default=0.0)
+parser.add_argument("-windAngleDeviation", type=float, required=False, default=30.0)
+
 args = parser.parse_args()
 
 
@@ -71,19 +80,38 @@ if __name__ == "__main__":
     path_policy = None if args.path_policy is None else os.path.join(GetPath._get_results_folder(), args.path_policy)
 
     # instantiate classes
-    if args.continuous == 1:
+    if args.env == "BoxV2":
+        observationDimension = 7
+        criticObservationDimension = 2
+        actionDimension = 1
+        rewardNormalizationFactor = 150
         net = BoxNetworkForceContinuous(sigma=args.continuous_sigma,
                                         sigma_scheme=scheme.CosineParameterScheme(param_start=args.continuous_sigma,
-                                                                                  param_end=args.continuous_sigma_end,
-                                                                                  time_span=args.continuous_sigma_steps if args.continuous_sigma_steps is not None else args.iterations),
+                                                                                    param_end=args.continuous_sigma_end,
+                                                                                    time_span=args.continuous_sigma_steps if args.continuous_sigma_steps is not None else args.iterations),
                                         pretrained_path=path_policy)
+        state_preprocessor = BoxPreprocessor()
+        env_specific_args = None
+    elif args.env == "Flight":
+        observationDimension = 15
+        criticObservationDimension = 15
+        actionDimension = 3
+        rewardNormalizationFactor = 1
+        net = FlightNetworkForceContinuous(observationDimension, actionDimension,
+                                            sigma=args.continuous_sigma,
+                                            sigma_scheme=scheme.CosineParameterScheme(param_start=args.continuous_sigma,
+                                                                                        param_end=args.continuous_sigma_end,
+                                                                                        time_span=args.continuous_sigma_steps if args.continuous_sigma_steps is not None else args.iterations),
+                                            pretrained_path=path_policy)
+        state_preprocessor = FlightPreprocessor()
+        env_specific_args = ["-trees=0", "-difficulty=%f" % args.difficulty, "-windPower=%f" % args.windPower, "-windAngleDeviation=%f" % args.windAngleDeviation, "-actionFrequency=%d" % args.actionFrequency]  # in own thread
     else:
-        net = BoxNetworkForce(pretrained_path=path_policy)
+        raise Exception("Invalid environment name")
 
     torch.save(net.state_dict(), os.path.join(path_results_folder, "net_initial.pt"))
 
-    env = UnityEnvironment(0, args.portSend, args.portReceive, path_executable, 7, 1, False)
-    rollout_generator = Rollout.RolloutGenerator(net, env, args.rolloutlimit)
+    env = UnityEnvironment(0, args.portSend, args.portReceive, path_executable, observationDimension, actionDimension, False, env_specific_args=env_specific_args)  # in own thread
+    rollout_generator = Rollout.RolloutGenerator(net, env, args.rolloutlimit, state_preprocessor=state_preprocessor)  # in own thread
 
     optimizer = optim.Adam(net.parameters(),
                             lr=args.lr_policy,
@@ -91,7 +119,7 @@ if __name__ == "__main__":
 
     scheduler_policy = torch.optim.lr_scheduler.StepLR(optimizer, step_size=args.lr_policy_stepsize, gamma=args.lr_policy_gamma)
 
-    baseline = Baseline.Critic(input_size=2,
+    baseline = Baseline.Critic(input_size=criticObservationDimension,
                                 lr=args.lr_critic,
                                 lr_step_size=args.lr_critic_stepsize,
                                 lr_gamma=args.lr_critic_gamma,
@@ -101,8 +129,8 @@ if __name__ == "__main__":
     if args.path_critic is not None:
         baseline.load(args.path_critic)
 
-    env_validation = UnityEnvironment(0, args.portSend + 50, args.portReceive + 50, path_executable, 7, 1, False)
-    rollout_generator_validation = Rollout.RolloutGenerator(net, env_validation, args.rolloutlimit)
+    env_validation = UnityEnvironment(0, args.portSend + 50, args.portReceive + 50, path_executable, observationDimension, actionDimension, False, env_specific_args=env_specific_args)
+    rollout_generator_validation = Rollout.RolloutGenerator(net, env_validation, args.rolloutlimit, state_preprocessor=state_preprocessor)
     validator = Validate.Validator(rollout_generator=rollout_generator_validation,
                                     validation_count=args.valcount,
                                     validation_frequency=args.valfreq,
@@ -137,15 +165,15 @@ if __name__ == "__main__":
 
         # returns (R) and values (V)
         V = baseline(states[:-1, :])
-        R = Rollout.calculate_returns(rewards=np.array(rewards) / 150,
+        R = Rollout.calculate_returns(rewards=np.array(rewards) / rewardNormalizationFactor,
                                         discount=args.discount,
                                         normalize=bool(args.reward_normalization),
                                         terminal_value=0 if done else baseline(states[-1, :]).detach().item())
 
         # optimization policy
         optimizer.zero_grad()
-        advantages = R - V.detach()
-        loss = (-logprobs * (advantages)).sum()
+        advantages = R - V.detach().view(-1)
+        loss = (-logprobs * (advantages.view(-1, 1))).sum()
         loss.backward()
         optimizer.step()
 
@@ -171,19 +199,17 @@ if __name__ == "__main__":
             validation_reward, validation_episode_length = validator.validate()
 
             s_prog = "%.1f" % (100 * iterations / args.iterations)
-            s_rew = "%.0f" % validation_reward
-            s_rew_vis = reward_to_string(validation_reward, minVal=-100, maxVal=500, divisions=12)
+            s_rew = "%.1f" % validation_reward
+            s_rew_vis = reward_to_string(validation_reward, minVal=0, maxVal=1, divisions=10)
             logger_validation.add(t, steps, iterations, episodes, validation_reward, validation_episode_length)
             print("progress %5s%%, reward %4s %s" % (s_prog, s_rew, s_rew_vis))
+            if args.network_save_interval is not None:
+                torch.save(net.state_dict(), os.path.join(path_results_folder, "policy_it_%0.10d.pt" % iterations))
+                baseline.save(os.path.join(path_results_folder, "critic_it_%0.10d.pt" % iterations))
 
         # adjust parameters
         net.run_parameter_change_scheme(iterations)
         scheduler_policy.step()
-
-        # save networks
-        if args.network_save_interval is not None and iterations % args.network_save_interval == 0:
-            torch.save(net.state_dict(), os.path.join(path_results_folder, "policy_it_%0.10d.pt" % iterations))
-            baseline.save(os.path.join(path_results_folder, "critic_it_%0.10d.pt" % iterations))
 
     # terminate environment
     rollout_generator.close()

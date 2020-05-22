@@ -5,7 +5,10 @@ EditorBuildSettings:
   m_ObjectHideFlags: 0
   serializedVersion: 2
   m_Scenes:
-  - enabled: 1
+  - enabled: 0
     path: Assets/RotatingBox/RotatingBox.unity
     guid: 17a2d9efa42f9704c87aaab2bdc690f8
+  - enabled: 1
+    path: Assets/FlightSimulator/FlightSim.unity
+    guid: 15e4f0519998b2444ade389a0bf55b14
   m_configObjects: {}

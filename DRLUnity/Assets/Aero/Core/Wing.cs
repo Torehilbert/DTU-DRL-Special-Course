@@ -36,7 +36,7 @@ public class Wing
     public Force GetForce(Rigidbody rigidbody)
     {
         Vector3 worldPosition = parent.TransformPoint(localPosition);
-        return GetForce(rigidbody.GetPointVelocity(worldPosition), worldPosition);
+        return GetForce(rigidbody.GetPointVelocity(worldPosition) - FlightWind.GetWind(worldPosition), worldPosition);
     }
 
 

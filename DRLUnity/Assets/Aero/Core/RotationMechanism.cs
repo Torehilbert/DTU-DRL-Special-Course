@@ -10,6 +10,7 @@ public class RotationMechanism
     public float maxChange = 1;
     public float smoothAngle;
 
+
     public RotationMechanism(Transform transform, Vector3 localEulerAngles, Vector3 localRotationAxis, float magnitude)
     {
         this.transform = transform;
@@ -19,10 +20,24 @@ public class RotationMechanism
         smoothAngle = 0;
     }
 
+
     public void Rotate(float input)
     {
         smoothAngle = smoothAngle + Mathf.Clamp(input * magnitude - smoothAngle, -maxChange, maxChange);
-        Quaternion rot = Quaternion.Euler(eulerAngles) * Quaternion.AngleAxis(smoothAngle, rotationAxis);
+        RotateMechanism(smoothAngle);
+    }
+
+
+    public void Reset()
+    {
+        smoothAngle = 0;
+        RotateMechanism(smoothAngle);
+    }
+
+
+    void RotateMechanism(float angle)
+    {
+        Quaternion rot = Quaternion.Euler(eulerAngles) * Quaternion.AngleAxis(angle, rotationAxis);
         transform.localRotation = rot;
     }
 }

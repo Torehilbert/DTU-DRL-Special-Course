@@ -18,25 +18,28 @@ public class FlightLandingReport
         rewardIAS = GetRewardIAS(ias);
         rewardVSI = GetRewardVSI(vsi);
 
-        rating = 2 * (rewardHeading + rewardX + rewardBank + rewardIAS + rewardVSI);
+        //rating = 2 * (rewardHeading + rewardX + rewardBank + rewardIAS + rewardVSI);
+        rating = rewardHeading * rewardX * rewardBank * rewardIAS * rewardVSI;
     }
 
     
     public float GetRewardHeading(float headingRadians)
     {
-        return Mathf.Exp(-0.5f * (headingRadians - Mathf.PI) * (headingRadians - Mathf.PI) / 0.0076f);
+        //return Mathf.Exp(-0.5f * (headingRadians - Mathf.PI) * (headingRadians - Mathf.PI) / 0.0076f);
+        return Mathf.Clamp01(1 - 4 * Mathf.Abs(headingRadians - Mathf.PI));
     }
 
     
     public float GetRewardX(float x)
     {
-        return Mathf.Exp(-0.5f * (x * x) / 9);
+        //return Mathf.Exp(-0.5f * (x * x) / 9);
+        return Mathf.Clamp01(1 - Mathf.Abs(0.05f * x));
     }
 
 
     public static bool AcceptableZ(float z)
     {
-        if (z < 15 && z > -15)
+        if (z <= 100 && z >= 0)
             return true;
         else
             return false;
@@ -45,18 +48,21 @@ public class FlightLandingReport
 
     public float GetRewardBank(float bank)
     {
-        return Mathf.Exp(-0.5f * (bank * bank) / 9);
+        //return Mathf.Exp(-0.5f * (bank * bank) / 9);
+        return Mathf.Clamp01(1 - Mathf.Abs(0.075f * bank));
     }
 
 
     public float GetRewardIAS(float ias)
     {
-        return ias < 25 ? 1 : Mathf.Exp(-0.5f * (ias - 25) * (ias - 25) / 25);
+        //return ias < 25 ? 1 : Mathf.Exp(-0.5f * (ias - 25) * (ias - 25) / 25);
+        return ias < 22 ? 1 : Mathf.Clamp01(1 - 0.075f * (ias - 22));
     }
 
 
     public float GetRewardVSI(float vsi)
     {
-        return Mathf.Exp(-0.5f * (vsi * vsi) / 4);
+        //return Mathf.Exp(-0.5f * (vsi * vsi) / 4);
+        return Mathf.Clamp01(1 + 0.15f * vsi);
     }
 }

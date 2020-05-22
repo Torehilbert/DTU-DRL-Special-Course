@@ -10,7 +10,7 @@ from BoxControllerHeuristic import BoxHeuristicController
 
 
 class UnityEnvironment:
-    def __init__(self, env_id, port_send, port_receive, path_to_executable, observation_dimension, action_dimension, is_visual):
+    def __init__(self, env_id, port_send, port_receive, path_to_executable, observation_dimension, action_dimension, is_visual, env_specific_args=None):
         self.env_id = env_id
         print("(%d) UnityEnvironment instance created!" % self.env_id)
         self.port_send = port_send
@@ -19,7 +19,7 @@ class UnityEnvironment:
         self.action_dimension = action_dimension
 
         # Creating sockets
-        print("(%d) creating sockets..." % self.env_id)
+        print("(%d) creating sockets with port-send: %s  and port-receive: %s..." % (self.env_id, self.port_send, self.port_receive))
         self.sockSend = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         self.sockReceive = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         self.sockReceive.bind(("127.0.0.1", port_receive))
@@ -27,19 +27,16 @@ class UnityEnvironment:
         # Starting up Unity
         print("(%d) starting up Unity instance..." % self.env_id)
         if is_visual:
-            self.envprocess = subprocess.Popen(
-                [path_to_executable, "-targetFrameRate=50", "-portAgentSend=%d" % port_receive, "-portAgentReceive=%d" % port_send]
-            )
+            arglist = [path_to_executable, "-targetFrameRate=50", "-portAgentSend=%d" % port_receive, "-portAgentReceive=%d" % port_send]
         else:
             if os.name == "nt":
-                self.envprocess = subprocess.Popen(
-                    [path_to_executable, "-batchMode", "-nographics", "-targetFrameRate=-1", "-portAgentSend=%d" % port_receive, "-portAgentReceive=%d" % port_send]
-                )
+                arglist = [path_to_executable, "-batchMode", "-nographics", "-targetFrameRate=-1", "-portAgentSend=%d" % port_receive, "-portAgentReceive=%d" % port_send]
             else:
                 os.system("chmod " + "+x " + path_to_executable)
-                self.envprocess = subprocess.Popen(
-                    [path_to_executable, "-batchMode", "-nographics", "-targetFrameRate=-1", "-portAgentSend=%d" % port_receive, "-portAgentReceive=%d" % port_send]
-                )
+                arglist = [path_to_executable, "-batchMode", "-nographics", "-targetFrameRate=-1", "-portAgentSend=%d" % port_receive, "-portAgentReceive=%d" % port_send]
+        if env_specific_args is not None:
+            arglist.extend(env_specific_args)
+        self.envprocess = subprocess.Popen(arglist)
 
     def step(self, symbol, action, msg):
         if(len(msg) > 0):

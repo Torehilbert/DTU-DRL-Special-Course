@@ -37,7 +37,8 @@ def plot_within_group(path_folder, column_name="validation reward", sheet_name="
     plt.figure()
     for i in range(len(csv_paths)):
         csv_path = csv_paths[i]
-        smoothed_rewards = smooth_series(extract_series(csv_path, column_name), smoothing_alpha)
+        reward_series = extract_series(csv_path, column_name)
+        smoothed_rewards = smooth_series(reward_series, smoothing_alpha)
         steps = extract_series(csv_path, "step")
         plt.plot(steps, smoothed_rewards)
         print("%d: Max=%f   (%s)" % (i, np.max(smoothed_rewards), csv_path))
@@ -53,21 +54,26 @@ def plot_groups(path_folder, column_name="validation reward", sheet_name="stats.
         path_group = os.path.join(path_folder, contents[i])
         if os.path.isdir(path_group):
             groups.append(path_group)
+            print(path_group)
     
     plt.figure()
     for i in range(len(groups)):
         csv_paths = find_nested_csvs_with_name(groups[i], sheet_name)
         for j in range(len(csv_paths)):
-            smoothed_rewards = smooth_series(extract_series(csv_paths[j], column_name), smoothing_alpha)
-            steps = extract_series(csv_paths[j], "step")
+            reward_series = extract_series(csv_paths[j], column_name)
+            inds_valid = np.logical_not(np.isnan(reward_series))
+            reward_series = reward_series[inds_valid]
+            smoothed_rewards = smooth_series(reward_series, smoothing_alpha)
+            steps = extract_series(csv_paths[j], "iterations")
+            steps = steps[inds_valid]
             plt.plot(steps, smoothed_rewards, color=COLORS[i])
     plt.show()
 
 
 if __name__ == "__main__":
-    path_folder = r"D:\Projects\DTU DRL Special Course\Results\exp_steplength"
+    path_folder = r"D:\Projects\DTU DRL Special Course\Results\Flight Sigma Experiment"
     #column_name = "validation reward"
     #smoothing_alpha = 0.95
 
     #plot_within_group(path_folder=path_folder, column_name=column_name, smoothing_alpha=smoothing_alpha)
-    plot_groups(path_folder, column_name="validation reward", sheet_name="stats.csv", smoothing_alpha=0.95)
+    plot_groups(path_folder, column_name="training reward", sheet_name="training.csv", smoothing_alpha=0.99)

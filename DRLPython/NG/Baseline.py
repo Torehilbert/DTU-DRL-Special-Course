@@ -29,13 +29,19 @@ class BaseCriticNetwork(torch.nn.Module):
         super(BaseCriticNetwork, self).__init__()
 
         self.sequential = torch.nn.Sequential(
-            torch.nn.Linear(input_size, 16),
+            torch.nn.Linear(input_size, 64),
             torch.nn.ReLU(),
-            torch.nn.Linear(16, 1)
+            torch.nn.Linear(64, 64),
+            torch.nn.ReLU(),
+            torch.nn.Linear(64, 64),
+            torch.nn.ReLU(),
+            torch.nn.Linear(64, 1)
         )
 
-        self.sequential[0].bias.data = torch.zeros(16)
-        self.sequential[2].bias.data = torch.zeros(1)
+        self.sequential[0].bias.data = torch.zeros(64)
+        self.sequential[2].bias.data = torch.zeros(64)
+        self.sequential[4].bias.data = torch.zeros(64)
+        self.sequential[6].bias.data = torch.zeros(1)
 
     def forward(self, x):
         return self.sequential(x)
@@ -90,9 +96,10 @@ class Critic(torch.nn.Module):
 
 
 if __name__ == "__main__":
-    critic = Critic(1, lr=1e-3, weight_decay=1e-7, lag=10)
+    input_dimension = 16
+    critic = Critic(input_dimension, lr=1e-3, lr_step_size=100, lr_gamma=0.5, weight_decay=1e-7, lag=10)
 
-    x_data = torch.linspace(0., 10., 11).view(-1, 1)
+    x_data = torch.linspace(0., 10., input_dimension * 11).view(-1, input_dimension)
     y_data = torch.linspace(0., 10., 11).view(-1, 1)
     epochs = 100
 
