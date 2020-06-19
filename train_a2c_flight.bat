@@ -1,11 +1,11 @@
-cd "D:\Projects\DTU DRL Special Course\DRLPython\NG"
+cd "D:\Projects\DTU DRL Special Course\DRLPython\A2C"
 
 python a2c_main.py ^
 -env="Flight" ^
 -dimensionStatePolicy=15 ^
 -dimensionStateCritic=15 ^
 -dimensionActionPolicy=3 ^
--iterations=10000 ^
+-iterations=1000 ^
 -num_workers=4 ^
 -nstep=100 ^
 -rolloutlimit=5000 ^
@@ -23,9 +23,7 @@ python a2c_main.py ^
 -val_count=100 ^
 -val_sample_size=10 ^
 -actionFrequency=10 ^
--difficulty=1.00 ^
+-difficulty=0.10 ^
 -windPower=2.5 ^
--windAngleDeviation=25.0 ^
--path_policy="D:\Projects\DTU DRL Special Course\Results\2020-06-17 22-27-06 Flight\net_policy_final.pt" ^
--path_critic="D:\Projects\DTU DRL Special Course\Results\2020-06-17 22-27-06 Flight\net_critic_final.pt"
+-windAngleDeviation=25.0
 pause
