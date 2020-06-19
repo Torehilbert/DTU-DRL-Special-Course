@@ -16,9 +16,9 @@ import GetPath
 import Logger
 
 ENV_NAME = "Flight"
-ROLLOUT_LIMIT = 2500
-EPISODES = 100
-VISUAL = True
+ROLLOUT_LIMIT = 500000
+EPISODES = 10
+VISUAL = False
 PORT_SEND = 25000
 PORT_RECEIVE = 25001
 
@@ -51,7 +51,7 @@ if __name__ == "__main__":
         preprocessor = FlightPreprocessor()
 
     #net = BoxHeuristicController()
-    env_specific_args = ["-trees=1", "-difficulty=%f" % 2.00, "-windPower=%f" % 5.5, "-windAngle=%f" % 90, "-windAngleDeviation=%f" % 25, "-actionFrequency=%d" % 1]
+    env_specific_args = ["-trees=1", "-difficulty=%f" % 400.0, "-limitMode=%d" % 1, "-windPower=%f" % 2.5, "-windAngle=%f" % 0, "-windAngleDeviation=%f" % 25, "-actionFrequency=%d" % 1]
     env = UnityEnvironment(0, PORT_SEND, PORT_RECEIVE, path_executable, observationDimension, actionDimension, VISUAL, env_specific_args=env_specific_args)
 
     state_raw = env.initial_state()

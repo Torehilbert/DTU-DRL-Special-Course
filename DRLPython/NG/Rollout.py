@@ -111,6 +111,8 @@ class RolloutGenerator():
         if done or auto_reset or episode_ended:
             self.state = self.env.reset()
             self.step_current = 0
+
+        if auto_reset:
             episode_ended = True
 
         states = torch.stack((states))

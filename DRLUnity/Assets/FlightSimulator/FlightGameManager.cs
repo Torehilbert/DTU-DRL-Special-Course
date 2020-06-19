@@ -40,6 +40,7 @@ public class FlightGameManager : MonoBehaviour
     public float totalActionRewardPenalty = 0;
     [System.NonSerialized]
     public float totalTimeRewardPenalty = 0;
+    int limitMode;
 
     [System.NonSerialized]
     public bool touchedDown = false;
@@ -79,9 +80,11 @@ public class FlightGameManager : MonoBehaviour
         argParser.AddArgument("-windAngleDeviation", false, "25");
         argParser.AddArgument("-penaltyActionCoefficient", false, "0.000");
         argParser.AddArgument("-penaltyTimeCoefficient", false, "0.00000");
+        argParser.AddArgument("-limitMode", false, "0");
         argParser.ParseArguments();
 
         difficulty = argParser.arguments["-difficulty"].valueFloat;
+        limitMode = argParser.arguments["-limitMode"].valueInt;
         actionFrequency = argParser.arguments["-actionFrequency"].valueInt;
         penaltyActionCoefficient = argParser.arguments["-penaltyActionCoefficient"].valueFloat;
         penaltyTimeCoefficient = argParser.arguments["-penaltyTimeCoefficient"].valueFloat;
@@ -268,7 +271,7 @@ public class FlightGameManager : MonoBehaviour
     void ResetEnvironment()
     {
         actionSkipCounter = actionFrequency;
-        FlightSpawnProperties properties = FlightSpawnProperties.Generate(difficulty);
+        FlightSpawnProperties properties = (limitMode==1 ? FlightSpawnProperties.GenerateLimitTesting(difficulty) : FlightSpawnProperties.Generate(difficulty));
 
         airplane.transform.position = properties.position; // new Vector3(0, 100, 750);
         airplane.transform.rotation = properties.rotation; // Quaternion.Euler(0, 180, 0);

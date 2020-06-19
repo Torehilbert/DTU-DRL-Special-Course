@@ -62,10 +62,12 @@ public class Wing
         return new Force(worldPosition, force);
     }
 
+
     public void TurnDebugOn()
     {
         debugOn = true;
     }
+
 
     public List<float> GetLiftToDrag(int aoamax)
     {

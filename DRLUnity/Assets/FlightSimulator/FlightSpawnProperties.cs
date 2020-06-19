@@ -54,6 +54,24 @@ public struct FlightSpawnProperties
     }
 
 
+    public static FlightSpawnProperties GenerateLimitTesting(float difficulty)
+    {
+        float distance = distanceMax + (difficulty > 1.01f ? 10 * (difficulty - 1.00f) : 0);
+        float slope = (slopeMin + slopeMax) / 2;
+        float speed = (speedMin + speedMax) / 2;
+
+        float sign = (Random.Range(-1, 1) == -1? -1 : 1);
+        float slopeHeading = sign * difficulty * 90;
+        float bank = 0;
+
+        Vector3 position = Quaternion.AngleAxis(slopeHeading, Vector3.up) * (Quaternion.AngleAxis(slope, Vector3.left) * (distance * Vector3.forward)) + Vector3.forward * 50;
+        Vector3 forward = -position.normalized;
+        Quaternion rotation = Quaternion.LookRotation(forward, Vector3.up) * Quaternion.AngleAxis(bank, forward);
+        Vector3 velocity = speed * forward;
+        return new FlightSpawnProperties(position, rotation, velocity, Vector3.zero);
+    }
+
+
     struct Roll
     {
         public float interpolant;
